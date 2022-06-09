@@ -1,0 +1,35 @@
+{
+    "type": "tabs",
+    "items": {
+        "_options": {
+            "type": "panel",
+            "label": "Options",
+            "items": {
+                "IP-Adress": {
+                    "type": "text",
+                    "sm": 12,
+                    "md": 6,
+                    "lg": 6,
+                    "label": "IP-Adress",
+                    "help": "IP or hostname of your Pellematic"
+                },
+                "Port": {
+                    "type": "number",
+                    "sm": 12,
+                    "md": 6,
+                    "lg": 6,
+                    "label": "Port",
+                    "help": "IP or hostname of your Pellematic"
+                },
+                "JSON-Password": {
+                    "type": "text",
+                    "sm": 12,
+                    "md": 6,
+                    "lg": 6,
+                    "label": "JSON-Password",
+                    "help": "IP or hostname of your Pellematic"
+                }
+            }
+        }
+    }
+}

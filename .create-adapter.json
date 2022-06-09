@@ -1,0 +1,44 @@
+{
+	"cli": true,
+	"target": "directory",
+	"adapterName": "oekofen-pellematic",
+	"title": "ökofen-pellemetic",
+	"description": "Pelletheizung von Ökofen",
+	"keywords": [
+		"Heizung",
+		"Ökofen",
+		"Pellet"
+	],
+	"expert": "yes",
+	"features": [
+		"adapter"
+	],
+	"adminFeatures": [],
+	"type": "climate-control",
+	"startMode": "daemon",
+	"connectionType": "local",
+	"dataSource": "poll",
+	"connectionIndicator": "yes",
+	"language": "JavaScript",
+	"adminReact": "no",
+	"tools": [
+		"ESLint",
+		"type checking"
+	],
+	"i18n": "words.js",
+	"releaseScript": "yes",
+	"devServer": "yes",
+	"devServerPort": 8081,
+	"indentation": "Tab",
+	"quotes": "single",
+	"es6class": "yes",
+	"authorName": "Frank Petersohn",
+	"authorGithub": "frankpetersohn",
+	"authorEmail": "petersohn@berufsschule-schwalmstadt.de",
+	"gitRemoteProtocol": "SSH",
+	"gitCommit": "yes",
+	"defaultBranch": "main",
+	"license": "MIT License",
+	"dependabot": "yes",
+	"creatorVersion": "2.1.1"
+}

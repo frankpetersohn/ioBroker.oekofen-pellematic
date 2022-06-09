@@ -1,0 +1,137 @@
+{
+    "common": {
+        "name": "oekofen-pellematic",
+        "version": "0.0.1",
+        "news": {
+            "0.0.1": {
+                "en": "initial release",
+                "de": "Erstveröffentlichung",
+                "ru": "Начальная версия",
+                "pt": "lançamento inicial",
+                "nl": "Eerste uitgave",
+                "fr": "Première version",
+                "it": "Versione iniziale",
+                "es": "Versión inicial",
+                "pl": "Pierwsze wydanie",
+                "zh-cn": "首次出版"
+            }
+        },
+        "title": "ökofen-pellemetic",
+        "titleLang": {
+            "en": "ökofen-pellemetic",
+            "de": "ökofen-Pellemetic",
+            "ru": "ökofen-пеллеметик",
+            "pt": "ökofen-pelemético",
+            "nl": "ökofen-pellemetic",
+            "fr": "ökofen-pellemetic",
+            "it": "ökofen-pellemetico",
+            "es": "ökofen-pellemético",
+            "pl": "ökofen-pellemetic",
+            "zh-cn": "ökofen-pellemetic"
+        },
+        "desc": {
+            "en": "Pelletheizung von Ökofen",
+            "de": "Pelletheizung von Ökofen",
+            "ru": "Пеллетхайзунг фон Окофен",
+            "pt": "Pelletheizung von Ökofen",
+            "nl": "Pelletheizung van Ökofen",
+            "fr": "Pelletheizung von Ökofen",
+            "it": "Pelletheizung von Ökofen",
+            "es": "Pelletheizung de Ökofen",
+            "pl": "Pelletheizung von Ökofen",
+            "zh-cn": "Pelletheizung von Ökofen"
+        },
+        "authors": [
+            "Frank Petersohn <petersohn@berufsschule-schwalmstadt.de>"
+        ],
+        "keywords": [
+            "Heizung",
+            "Ökofen",
+            "Pellet"
+        ],
+        "license": "MIT",
+        "platform": "Javascript/Node.js",
+        "main": "main.js",
+        "icon": "oekofen-pellematic.png",
+        "enabled": true,
+        "extIcon": "https://raw.githubusercontent.com/frankpetersohn/ioBroker.oekofen-pellematic/main/admin/oekofen-pellematic.png",
+        "readme": "https://github.com/frankpetersohn/ioBroker.oekofen-pellematic/blob/main/README.md",
+        "loglevel": "info",
+        "mode": "daemon",
+        "type": "climate-control",
+        "compact": true,
+        "connectionType": "local",
+        "dataSource": "poll",
+        "materialize": true,
+        "adminUI": {
+            "config": "json"
+        },
+        "dependencies": [
+            {
+                "js-controller": ">=2.0.0"
+            }
+        ]
+    },
+    "native": {
+        "JSON-Password": "",
+        "Port": "42",
+        "IP-Adress": ""
+    },
+    "objects": [],
+    "instanceObjects": [
+        {
+            "_id": "info",
+            "type": "channel",
+            "common": {
+                "name": "Information"
+            },
+            "native": {}
+        },
+        {
+            "_id": "info.connection",
+            "type": "state",
+            "common": {
+                "role": "indicator.connected",
+                "name": "Device or service connected",
+                "type": "boolean",
+                "read": true,
+                "write": false,
+                "def": false
+            },
+            "native": {}
+        },
+        {
+            "_id": "pe1",
+            "type": "channel",
+            "common": {
+                "name": "pe1"
+            },
+            "native": {}
+        },
+        {
+            "_id": "pe1.L_temp_act",
+            "type": "state",
+            "common": {
+                "role": "value.temperature",
+                "name": 
+                     {
+                      "en": "Kesseltemperatur",
+                      "de": "Kesseltemperatur",
+                      "ru": "Кессельтемператур",
+                      "pt": "Máquina de montagem automática",
+                      "nl": "Kesseltemperatuur",
+                      "fr": "Kesseltemperatur",
+                      "it": "Esecuzione",
+                      "es": "Kesseltemperatur",
+                      "pl": "Kesseltemperatura",
+                      "zh-cn": "Ksseltemper"
+                    },
+                "type": "number",
+                "read": true,
+                "write": false
+                
+            },
+            "native": {}
+        }
+    ]
+}
