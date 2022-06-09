@@ -44,11 +44,89 @@ class OekofenPellematic extends utils.Adapter {
 
 		// The adapters config (in the instance object everything under the attribute "native") is accessible via
 		// this.config:
-		this.log.info('Pellematic-IP is '+ this.config['IP-Adress']);
-		this.log.info('Pellematic-Port is '+ this.config['Port']);
-		this.log.info('Pellematic-JSON is '+ this.config['JSON-Password']);
+		this.log.info('Pellematic-IP is ' + this.config['IP-Adress']);
+		this.log.info('Pellematic-Port is ' + this.config['Port']);
+		this.log.info('Pellematic-JSON is ' + this.config['JSON-Password']);
+		/* ### */
+		this.apiClient = axios.create({
+			baseURL: 'http://' + this.config['IP-Adress'] + ':' + this.config['Port'] + '/' + this.config['JSON-Password'],
+			timeout: 4000,
+			responseType: 'json',
+			responseEncoding: 'utf8',
+		});
+		try {
+			const peResponse = await this.apiClient.get('/all?');
 
-		this.holeDaten();
+			this.log.debug('connState:' + this.apiClient.getUri());
+			this.log.debug('pedata:' + JSON.stringify(peResponse.data));
+
+			if (peResponse.status === 200) {
+				const pData = peResponse.data;
+				const channels = Object.keys(peResponse.data);
+				/*
+				for( let i in channels){
+					this.log.warn(channels[i]);
+					this.setObject(channels[i],{
+						common:{
+							name: channels[i]
+						},
+						type: 'channel',
+						native: {}
+					});
+				}
+
+*/
+
+
+				const channelnames = Object.keys(peResponse.data);
+				for (let y in channelnames) {
+
+					this.setObjectNotExists(channelnames[y], {
+						common: {
+							name: channelnames[y]
+						},
+						type: 'channel',
+						native: {}
+					});
+				}
+				for (let i in peResponse.data) {
+					const statenames = Object.keys(peResponse.data[i]);
+					for (let x in statenames) {
+
+						const statename = i + '.' + statenames[x];
+						this.log.warn( statename);
+						this.setObjectNotExists(statename, {
+							type: 'state',
+							common: {
+								role: 'value.temperature',
+								name: statename,
+								type: 'number',
+								read: true,
+								write: false
+							},
+
+							native: {}
+						});
+					}
+
+				}
+
+				/*
+				peResponse.data.forEach(element => {
+					Object.entries(element).forEach(([key]) =>{
+						this.log.warn(key);
+					});
+				});*/
+
+			}
+		} catch (err) {
+			this.log.error(this.apiClient.getUri());
+			this.log.error(err);
+		}
+		/* ### */
+
+
+		//this.holeDaten();
 
 
 		/*
@@ -71,7 +149,7 @@ class OekofenPellematic extends utils.Adapter {
 			type: 'state',
 			common: {
 				role: 'value.temperature',
-				name:'Kesseltemperatur',
+				name: 'Kesseltemperatur',
 				type: 'number',
 				read: true,
 				write: false
@@ -83,7 +161,7 @@ class OekofenPellematic extends utils.Adapter {
 			type: 'state',
 			common: {
 				role: 'value.temperature',
-				name:'Pellematic Status',
+				name: 'Pellematic Status',
 				type: 'string',
 				read: true,
 				write: false
@@ -119,29 +197,29 @@ class OekofenPellematic extends utils.Adapter {
 		result = await this.checkGroupAsync('admin', 'admin');
 		this.log.info('check group user admin group admin: ' + result);
 	}
-	async holeDaten(){
-		abfrageTimer=null;
+	async holeDaten() {
+		abfrageTimer = null;
 		this.log.info('Hole Daten');
 		this.apiClient = axios.create({
-			baseURL: 'http://'+this.config['IP-Adress']+':'+this.config['Port']+'/'+this.config['JSON-Password'],
-			timeout:4000,
+			baseURL: 'http://' + this.config['IP-Adress'] + ':' + this.config['Port'] + '/' + this.config['JSON-Password'],
+			timeout: 4000,
 			responseType: 'json',
 			responseEncoding: 'utf8',
 		});
-		try{
-			const peResponse = await this.apiClient.get('/pe1');
-			this.log.debug('connState:'+ this.apiClient.getUri());
-			this.log.debug('pedata:'+ JSON.stringify(peResponse.data));
-			if(peResponse.status ===200){
+		try {
+			const peResponse = await this.apiClient.get('/all?');
+			this.log.debug('connState:' + this.apiClient.getUri());
+			this.log.debug('pedata:' + JSON.stringify(peResponse.data));
+			if (peResponse.status === 200) {
 				const pData = peResponse.data;
-				await this.setStateAsync('L_temp_act',{val: pData.pe1.L_temp_act / 10, ack: true});
-				await this.setStateAsync('L_statetext',{val: pData.pe1.L_statetext, ack: true});
+				await this.setStateAsync('L_temp_act', { val: pData.pe1.L_temp_act.val * pData.pe1.L_temp_act.factor, ack: true });
+				await this.setStateAsync('L_statetext', { val: pData.pe1.L_statetext, ack: true });
 			}
-		}catch(err){
+		} catch (err) {
 			this.log.error(this.apiClient.getUri());
 			this.log.error(err);
 		}
-		abfrageTimer = this.setTimeout(() => this.holeDaten(),30000);
+		abfrageTimer = this.setTimeout(() => this.holeDaten(), 30000);
 	}
 
 	/**
