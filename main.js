@@ -10,6 +10,8 @@ const utils = require('@iobroker/adapter-core');
 const { default: axios } = require('axios');
 
 let abfrageTimer = null;
+let statelist = [];
+let updateInterval = null;
 // Load your modules here, e.g.:
 // const fs = require("fs");
 
@@ -55,28 +57,19 @@ class OekofenPellematic extends utils.Adapter {
 			responseEncoding: 'utf8',
 		});
 		try {
-			const peResponse = await this.apiClient.get('/all?');
+			
+			let peResponse = await this.apiClient.get('/all?');
+
+		
 
 			this.log.debug('connState:' + this.apiClient.getUri());
 			this.log.debug('pedata:' + JSON.stringify(peResponse.data));
 
+			
+
 			if (peResponse.status === 200) {
 				const pData = peResponse.data;
 				const channels = Object.keys(peResponse.data);
-				/*
-				for( let i in channels){
-					this.log.warn(channels[i]);
-					this.setObject(channels[i],{
-						common:{
-							name: channels[i]
-						},
-						type: 'channel',
-						native: {}
-					});
-				}
-
-*/
-
 
 				const channelnames = Object.keys(peResponse.data);
 				for (let y in channelnames) {
@@ -92,21 +85,81 @@ class OekofenPellematic extends utils.Adapter {
 				for (let i in peResponse.data) {
 					const statenames = Object.keys(peResponse.data[i]);
 					for (let x in statenames) {
+						//Finde Role
+						let staterole = 'text';
+						let statetyp = 'string';
+						let commonunit = '';
+
+
+						if (typeof peResponse.data[i][statenames[x]]['unit'] !== 'undefined') {
+							if (peResponse.data[i][statenames[x]]['unit'].indexOf('C') >= 0) {
+								staterole = 'value.temperature';
+								statetyp = 'number';
+								commonunit = '°C';
+
+							} else if (peResponse.data[i][statenames[x]]['unit'].indexOf('W') >= 0) {
+								statetyp = 'number';
+								staterole = 'value.power.consumption';
+								commonunit = 'W';
+
+								if (peResponse.data[i][statenames[x]]['unit'].indexOf('kwh') >= 0) {
+
+									commonunit = 'KWh';
+								}
+
+							} else {
+								let staterole = 'text';
+								let statetyp = 'string';
+								let commonunit = '';
+							}
+
+
+
+
+						}
+						/*
+						else if (statenames[x].indexOf('temp') >= 0) {
+							//	if (statenames[x].indexOf('temp') >= 0) {
+							staterole = 'value.temperature';
+							statetyp = 'number';
+
+						}*/
 
 						const statename = i + '.' + statenames[x];
-						this.log.warn( statename);
-						this.setObjectNotExists(statename, {
-							type: 'state',
-							common: {
-								role: 'value.temperature',
-								name: statename,
-								type: 'number',
-								read: true,
-								write: false
-							},
+						statelist.push(statename);
+						this.log.warn(statename);
 
-							native: {}
-						});
+						if (statetyp == 'number') {
+							this.setObjectNotExists(statename, {
+								type: 'state',
+								common: {
+									read: true,
+									write: false,
+									role: staterole,
+									name: statename,
+									unit: commonunit,
+									type: 'number'
+								},
+
+								native: {}
+							});
+						}
+						if (statetyp == 'string') {
+							this.setObjectNotExists(statename, {
+								type: 'state',
+								common: {
+									read: true,
+									write: false,
+									role: staterole,
+									name: statename,
+									type: 'string'
+								},
+
+								native: {}
+							});
+						}
+
+
 					}
 
 				}
@@ -118,22 +171,27 @@ class OekofenPellematic extends utils.Adapter {
 					});
 				});*/
 
+
 			}
 		} catch (err) {
 			this.log.error(this.apiClient.getUri());
 			this.log.error(err);
 		}
+
+		abfrageTimer = setTimeout(() => { this.holeDaten(); }, 10000);
+		//this.holeDaten();
+		//updateInterval = setInterval(this.holeDaten, 30000);
 		/* ### */
 
 
-		//this.holeDaten();
+
 
 
 		/*
 		For every state in the system there has to be also an object of type state
 		Here a simple template for a boolean variable named "testVariable"
 		Because every adapter instance uses its own unique namespace variable names can't collide with other adapters variables
-		*/
+		
 		await this.setObjectNotExistsAsync('testVariable', {
 			type: 'state',
 			common: {
@@ -154,7 +212,7 @@ class OekofenPellematic extends utils.Adapter {
 				read: true,
 				write: false
 			},
-
+	
 			native: {}
 		});
 		await this.setObjectNotExistsAsync('L_statetext', {
@@ -169,8 +227,10 @@ class OekofenPellematic extends utils.Adapter {
 
 			native: {}
 		});
+	*/
+
 		// In order to get state updates, you need to subscribe to them. The following line adds a subscription for our variable we have created above.
-		this.subscribeStates('testVariable');
+		//this.subscribeStates('testVariable');
 		// You can also add a subscription for multiple states. The following line watches all states starting with "lights."
 		// this.subscribeStates('lights.*');
 		// Or, if you really must, you can also watch all states. Don't do this if you don't need to. Otherwise this will cause a lot of unnecessary load on the system:
@@ -181,14 +241,14 @@ class OekofenPellematic extends utils.Adapter {
 			you will notice that each setState will cause the stateChange event to fire (because of above subscribeStates cmd)
 		*/
 		// the variable testVariable is set to true as command (ack=false)
-		await this.setStateAsync('testVariable', true);
+		// await this.setStateAsync('testVariable', true);
 
 		// same thing, but the value is flagged "ack"
 		// ack should be always set to true if the value is received from or acknowledged from the target system
-		await this.setStateAsync('testVariable', { val: true, ack: true });
+		// await this.setStateAsync('testVariable', { val: true, ack: true });
 
 		// same thing, but the state is deleted after 30s (getState will return null afterwards)
-		await this.setStateAsync('testVariable', { val: true, ack: true, expire: 30 });
+		// await this.setStateAsync('testVariable', { val: true, ack: true, expire: 30 });
 
 		// examples for the checkPassword/checkGroup functions
 		let result = await this.checkPasswordAsync('admin', 'iobroker');
@@ -197,29 +257,88 @@ class OekofenPellematic extends utils.Adapter {
 		result = await this.checkGroupAsync('admin', 'admin');
 		this.log.info('check group user admin group admin: ' + result);
 	}
+
+
+
 	async holeDaten() {
-		abfrageTimer = null;
+
+		//	abfrageTimer = null;
 		this.log.info('Hole Daten');
+
+		//if (arguments.length == 0) {
 		this.apiClient = axios.create({
 			baseURL: 'http://' + this.config['IP-Adress'] + ':' + this.config['Port'] + '/' + this.config['JSON-Password'],
-			timeout: 4000,
+			timeout: 1000,
 			responseType: 'json',
 			responseEncoding: 'utf8',
 		});
 		try {
 			const peResponse = await this.apiClient.get('/all?');
-			this.log.debug('connState:' + this.apiClient.getUri());
-			this.log.debug('pedata:' + JSON.stringify(peResponse.data));
+			//this.log.debug('connState:' + this.apiClient.getUri());
+			//this.log.debug('pedata:' + JSON.stringify(peResponse.data));
 			if (peResponse.status === 200) {
 				const pData = peResponse.data;
-				await this.setStateAsync('L_temp_act', { val: pData.pe1.L_temp_act.val * pData.pe1.L_temp_act.factor, ack: true });
-				await this.setStateAsync('L_statetext', { val: pData.pe1.L_statetext, ack: true });
+				this.log.debug(JSON.stringify(pData));
+				//await this.setStateAsync('L_temp_act', { val: pData.pe1.L_temp_act.val * pData.pe1.L_temp_act.factor, ack: true });
+				//await this.setStateAsync('L_statetext', { val: pData.pe1.L_statetext, ack: true });
+				if(statelist.length < 1){
+					this.log.warn('StateList empty: Please restart service');
+				}
+				for (let i = 0; i < statelist.length; i++) {
+					//this.log.info(statelist[i]);
+
+					let path = statelist[i].split('.');
+					if (statelist[i].indexOf('circ1') >= 0) {
+						this.log.error(JSON.stringify(pData[path[0]][path[1]]));
+					}
+					if (pData[path[0]][path[1]]['val'] != 'undefined') {
+						if (pData[path[0]][path[1]]['factor'] != 'undefined') {
+							await this.setStateAsync(statelist[i], { val: pData[path[0]][path[1]]['val'] * pData[path[0]][path[1]]['factor'], ack: true });
+
+						} else {
+							await this.setStateAsync(statelist[i], { val: pData[path[0]][path[1]]['val'], ack: true });
+						}
+
+
+
+					} else {
+
+
+						if (statelist[i].indexOf('name') >= 0 || statelist[i].indexOf('text') >= 0) {
+							await this.setStateAsync(statelist[i], { val: JSON.stringify(pData[path[0]][path[1]]), ack: true });
+						} else {
+							await this.setStateAsync(statelist[i], { val: JSON.stringify(pData[path[0]][path[1]]), ack: true });
+						}
+
+					}
+
+
+					/*
+					if (statelist[i].indexOf('temp') >= 0) {
+		
+		
+						let stateval = pData[path[0]][path[1]]['val'];
+						let statefact = pData[path[0]][path[1]]['factor'];
+						this.log.warn(stateval);
+						await this.setStateAsync(statelist[i], { val: pData[path[0]][path[1]]['val'] * pData[path[0]][path[1]]['factor'], ack: true });
+					}*/
+				}
+
 			}
 		} catch (err) {
 			this.log.error(this.apiClient.getUri());
 			this.log.error(err);
 		}
-		abfrageTimer = this.setTimeout(() => this.holeDaten(), 30000);
+		//}
+
+
+
+
+
+
+
+
+		abfrageTimer = this.setTimeout(() => this.holeDaten(), 35000);
 	}
 
 	/**
@@ -232,8 +351,10 @@ class OekofenPellematic extends utils.Adapter {
 			// clearTimeout(timeout1);
 			// clearTimeout(timeout2);
 			// ...
-			// clearInterval(interval1);
 
+			// clearInterval(interval1);
+			//	this.clearTimeout(abfrageTimer);
+			clearInterval(updateInterval);
 			callback();
 		} catch (e) {
 			callback();
