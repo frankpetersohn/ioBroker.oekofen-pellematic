@@ -8,6 +8,7 @@
 // you need to create an adapter
 const utils = require('@iobroker/adapter-core');
 const { default: axios } = require('axios');
+const schedule = require('node-schedule');
 
 let abfrageTimer = null;
 let statelist = [];
@@ -50,184 +51,133 @@ class OekofenPellematic extends utils.Adapter {
 		this.log.info('Pellematic-Port is ' + this.config['Port']);
 		this.log.info('Pellematic-JSON is ' + this.config['JSON-Password']);
 		/* ### */
-		this.apiClient = axios.create({
-			baseURL: 'http://' + this.config['IP-Adress'] + ':' + this.config['Port'] + '/' + this.config['JSON-Password'],
-			timeout: 4000,
-			responseType: 'json',
-			responseEncoding: 'utf8',
-		});
-		try {
-			
-			let peResponse = await this.apiClient.get('/all?');
 
-		
 
-			this.log.debug('connState:' + this.apiClient.getUri());
-			this.log.debug('pedata:' + JSON.stringify(peResponse.data));
 
-			
 
-			if (peResponse.status === 200) {
-				const pData = peResponse.data;
-				const channels = Object.keys(peResponse.data);
+		let pData = await this.getJSONfromOekofen();
+		while (!pData) {
+			setTimeout(() => {
+				pData = this.getJSONfromOekofen();
+			}, 2500);
+		}
 
-				const channelnames = Object.keys(peResponse.data);
-				for (let y in channelnames) {
 
-					this.setObjectNotExists(channelnames[y], {
+		const channels = Object.keys(pData);
+		//this.log.warn(JSON.stringify(pData));
+		const channelnames = Object.keys(pData);
+		for (let y in channelnames) {
+
+			this.setObjectNotExists(channelnames[y], {
+				common: {
+					name: channelnames[y]
+				},
+				type: 'channel',
+				native: {}
+			});
+		}
+		for (let i in pData) {
+
+			const statenames = Object.keys(pData[i]);
+			for (let x in statenames) {
+				//Finde Role
+				let staterole = 'text';
+				let statetyp = 'string';
+				let commonunit = '';
+
+
+				if (typeof pData[i][statenames[x]]['unit'] !== 'undefined') {
+					//	commonunit = pData[i][statenames[x]]['unit'];
+					if (pData[i][statenames[x]]['unit'].indexOf('C') >= 0) {
+						staterole = 'value.temperature';
+						statetyp = 'number';
+						commonunit = '°C';
+
+					} else if (pData[i][statenames[x]]['unit'].indexOf('W') >= 0) {
+						statetyp = 'number';
+						staterole = 'value.power.consumption';
+						commonunit = pData[i][statenames[x]]['unit'];
+
+
+					} else if (pData[i][statenames[x]]['unit'].indexOf('%') >= 0) {
+						statetyp = 'number';
+						staterole = 'value';
+						commonunit = '%';
+					} else if (pData[i][statenames[x]]['unit'].indexOf('kg') >= 0) {
+						statetyp = 'number';
+						staterole = 'value';
+						commonunit = 'kg';
+					} else if (pData[i][statenames[x]]['unit'].indexOf('zs') >= 0) {
+						statetyp = 'number';
+						staterole = 'value';
+						commonunit = 'Zs';
+					} else if (pData[i][statenames[x]]['unit'].indexOf('EH') >= 0) {
+						statetyp = 'number';
+						staterole = 'value';
+						commonunit = 'EH';
+					} else if (pData[i][statenames[x]]['unit'].indexOf('min') >= 0) {
+						statetyp = 'number';
+						staterole = 'value';
+						commonunit = 'Min';
+					}
+					else if (pData[i][statenames[x]]['unit'].indexOf('h') >= 0) {
+						statetyp = 'number';
+						staterole = 'value';
+						commonunit = 'Stunden';
+					}
+					else if (pData[i][statenames[x]]['unit'].indexOf('K') >= 0) {
+						statetyp = 'number';
+						staterole = 'value';
+						commonunit = 'K';
+					}
+
+				} else if (typeof pData[i][statenames[x]]['val'] !== 'undefined' && typeof pData[i][statenames[x]]['factor'] !== 'undefined') {
+					statetyp = 'number';
+					staterole = 'value';
+					commonunit = '';
+				}
+
+				const statename = i + '.' + statenames[x];
+				statelist.push(statename);
+				this.log.warn(statename);
+
+				if (statetyp == 'number') {
+					this.setObjectNotExists(statename, {
+						type: 'state',
 						common: {
-							name: channelnames[y]
+							read: true,
+							write: false,
+							role: staterole,
+							name: statename,
+							unit: commonunit,
+							type: 'number'
 						},
-						type: 'channel',
+
 						native: {}
 					});
 				}
-				for (let i in peResponse.data) {
-					const statenames = Object.keys(peResponse.data[i]);
-					for (let x in statenames) {
-						//Finde Role
-						let staterole = 'text';
-						let statetyp = 'string';
-						let commonunit = '';
+				if (statetyp == 'string') {
+					this.setObjectNotExists(statename, {
+						type: 'state',
+						common: {
+							read: true,
+							write: false,
+							role: staterole,
+							name: statename,
+							type: 'string'
+						},
 
-
-						if (typeof peResponse.data[i][statenames[x]]['unit'] !== 'undefined') {
-							if (peResponse.data[i][statenames[x]]['unit'].indexOf('C') >= 0) {
-								staterole = 'value.temperature';
-								statetyp = 'number';
-								commonunit = '°C';
-
-							} else if (peResponse.data[i][statenames[x]]['unit'].indexOf('W') >= 0) {
-								statetyp = 'number';
-								staterole = 'value.power.consumption';
-								commonunit = 'W';
-
-								if (peResponse.data[i][statenames[x]]['unit'].indexOf('kwh') >= 0) {
-
-									commonunit = 'KWh';
-								}
-
-							} else {
-								let staterole = 'text';
-								let statetyp = 'string';
-								let commonunit = '';
-							}
-
-
-
-
-						}
-						/*
-						else if (statenames[x].indexOf('temp') >= 0) {
-							//	if (statenames[x].indexOf('temp') >= 0) {
-							staterole = 'value.temperature';
-							statetyp = 'number';
-
-						}*/
-
-						const statename = i + '.' + statenames[x];
-						statelist.push(statename);
-						this.log.warn(statename);
-
-						if (statetyp == 'number') {
-							this.setObjectNotExists(statename, {
-								type: 'state',
-								common: {
-									read: true,
-									write: false,
-									role: staterole,
-									name: statename,
-									unit: commonunit,
-									type: 'number'
-								},
-
-								native: {}
-							});
-						}
-						if (statetyp == 'string') {
-							this.setObjectNotExists(statename, {
-								type: 'state',
-								common: {
-									read: true,
-									write: false,
-									role: staterole,
-									name: statename,
-									type: 'string'
-								},
-
-								native: {}
-							});
-						}
-
-
-					}
-
-				}
-
-				/*
-				peResponse.data.forEach(element => {
-					Object.entries(element).forEach(([key]) =>{
-						this.log.warn(key);
+						native: {}
 					});
-				});*/
+				}
 
 
 			}
-		} catch (err) {
-			this.log.error(this.apiClient.getUri());
-			this.log.error(err);
+
 		}
 
-		abfrageTimer = setTimeout(() => { this.holeDaten(); }, 10000);
-		//this.holeDaten();
-		//updateInterval = setInterval(this.holeDaten, 30000);
-		/* ### */
 
-
-
-
-
-		/*
-		For every state in the system there has to be also an object of type state
-		Here a simple template for a boolean variable named "testVariable"
-		Because every adapter instance uses its own unique namespace variable names can't collide with other adapters variables
-		
-		await this.setObjectNotExistsAsync('testVariable', {
-			type: 'state',
-			common: {
-				name: 'testVariable',
-				type: 'boolean',
-				role: 'indicator',
-				read: true,
-				write: true,
-			},
-			native: {},
-		});
-		await this.setObjectNotExistsAsync('L_temp_act', {
-			type: 'state',
-			common: {
-				role: 'value.temperature',
-				name: 'Kesseltemperatur',
-				type: 'number',
-				read: true,
-				write: false
-			},
-	
-			native: {}
-		});
-		await this.setObjectNotExistsAsync('L_statetext', {
-			type: 'state',
-			common: {
-				role: 'value.temperature',
-				name: 'Pellematic Status',
-				type: 'string',
-				read: true,
-				write: false
-			},
-
-			native: {}
-		});
-	*/
+		abfrageTimer = setTimeout(() => { this.updateData(); }, 10000);
 
 		// In order to get state updates, you need to subscribe to them. The following line adds a subscription for our variable we have created above.
 		//this.subscribeStates('testVariable');
@@ -258,88 +208,116 @@ class OekofenPellematic extends utils.Adapter {
 		this.log.info('check group user admin group admin: ' + result);
 	}
 
-
-
-	async holeDaten() {
-
-		//	abfrageTimer = null;
-		this.log.info('Hole Daten');
-
-		//if (arguments.length == 0) {
+	async getJSONfromOekofen() {
 		this.apiClient = axios.create({
 			baseURL: 'http://' + this.config['IP-Adress'] + ':' + this.config['Port'] + '/' + this.config['JSON-Password'],
-			timeout: 1000,
+			timeout: 4000,
 			responseType: 'json',
 			responseEncoding: 'utf8',
 		});
 		try {
+
 			const peResponse = await this.apiClient.get('/all?');
-			//this.log.debug('connState:' + this.apiClient.getUri());
-			//this.log.debug('pedata:' + JSON.stringify(peResponse.data));
+			this.log.debug('connState:' + this.apiClient.getUri());
+			//	this.log.debug('pedata:' + JSON.stringify(peResponse.data));
+
+
+
 			if (peResponse.status === 200) {
-				const pData = peResponse.data;
-				this.log.debug(JSON.stringify(pData));
-				//await this.setStateAsync('L_temp_act', { val: pData.pe1.L_temp_act.val * pData.pe1.L_temp_act.factor, ack: true });
-				//await this.setStateAsync('L_statetext', { val: pData.pe1.L_statetext, ack: true });
-				if(statelist.length < 1){
-					this.log.warn('StateList empty: Please restart service');
+				this.log.info('Send Data from Pellematic');
+				await this.setStateAsync('info.connection', { val: true, ack: true });
+				return peResponse.data;
+			} else {
+				await this.setStateAsync('info.connection', { val: false, ack: true });
+			}
+
+		} catch (e) {
+			this.log.error(e);
+			return false;
+		}
+	}
+
+	async updateData() {
+
+		const oekofenStates = [];
+
+		this.getStates('oekofen-pellematic.0.*', function (err, states) {
+			for (const id in states) {
+				oekofenStates.push(id);
+
+			}
+		});
+
+
+		try {
+			const jsonData = await this.getJSONfromOekofen();
+
+
+			//	console.log(JSON.stringify(jsonData));
+			if (oekofenStates.length < 1) {
+				this.log.warn('StateList empty: Please restart service');
+			}
+
+			for (let i = 0; i < statelist.length; i++) {
+
+				const path = statelist[i].split('.');
+				//	this.log.info(JSON.stringify(jsonData[path[0]][path[1]]));
+
+				if(path[0] == 'forecast'){
+					await this.setStateAsync(statelist[i], { val: jsonData[path[0]][path[1]]['val'] , ack: true });
 				}
-				for (let i = 0; i < statelist.length; i++) {
-					//this.log.info(statelist[i]);
 
-					let path = statelist[i].split('.');
-					if (statelist[i].indexOf('circ1') >= 0) {
-						this.log.error(JSON.stringify(pData[path[0]][path[1]]));
+				if (typeof (jsonData[path[0]][path[1]]['val']) != 'undefined') {
+
+					if (typeof (jsonData[path[0]][path[1]]['factor']) != 'undefined') {
+
+						await this.setStateAsync(statelist[i], { val: jsonData[path[0]][path[1]]['val'] * jsonData[path[0]][path[1]]['factor'], ack: true });
+
 					}
-					if (pData[path[0]][path[1]]['val'] != 'undefined') {
-						if (pData[path[0]][path[1]]['factor'] != 'undefined') {
-							await this.setStateAsync(statelist[i], { val: pData[path[0]][path[1]]['val'] * pData[path[0]][path[1]]['factor'], ack: true });
+					if (typeof (jsonData[path[0]][path[1]]['format']) != 'undefined') {
+						const format = JSON.stringify(jsonData[path[0]][path[1]]['format']).split('|');
 
-						} else {
-							await this.setStateAsync(statelist[i], { val: pData[path[0]][path[1]]['val'], ack: true });
+
+						const formatarray = [];
+						for (let ind = 0; ind < format.length; ind++) {
+
+							const formatsplit = format[ind].replace('"', '').split(':');
+							formatarray[formatsplit[0]] = formatsplit[1];
 						}
 
+						await this.setStateAsync(statelist[i], { val: formatarray[jsonData[path[0]][path[1]]['val']], ack: true });
+
+					}
+					if (path[1] == 'name') {
+						await this.setStateAsync(statelist[i], { val: jsonData[path[0]][path[1]]['val'].replace('"', ''), ack: true });
+					}
 
 
+
+				} else {
+					//	await this.setStateAsync(statelist[i], { val: JSON.stringify(jsonData[path[0]][path[1]]), ack: true });
+
+					if (statelist[i].indexOf('name') >= 0 || statelist[i].indexOf('text') >= 0 || statelist[i].indexOf('info') >= 0) {
+						await this.setStateAsync(statelist[i], { val: JSON.stringify(jsonData[path[0]][path[1]]).replace('"', ''), ack: true });
 					} else {
-
-
-						if (statelist[i].indexOf('name') >= 0 || statelist[i].indexOf('text') >= 0) {
-							await this.setStateAsync(statelist[i], { val: JSON.stringify(pData[path[0]][path[1]]), ack: true });
-						} else {
-							await this.setStateAsync(statelist[i], { val: JSON.stringify(pData[path[0]][path[1]]), ack: true });
-						}
-
+						await this.setStateAsync(statelist[i], { val: JSON.stringify(jsonData[path[0]][path[1]]).replace('"', ''), ack: true });
 					}
 
-
-					/*
-					if (statelist[i].indexOf('temp') >= 0) {
-		
-		
-						let stateval = pData[path[0]][path[1]]['val'];
-						let statefact = pData[path[0]][path[1]]['factor'];
-						this.log.warn(stateval);
-						await this.setStateAsync(statelist[i], { val: pData[path[0]][path[1]]['val'] * pData[path[0]][path[1]]['factor'], ack: true });
-					}*/
 				}
 
 			}
-		} catch (err) {
-			this.log.error(this.apiClient.getUri());
-			this.log.error(err);
+
+
+
+			abfrageTimer = this.setTimeout(() => this.updateData(), 25000);
 		}
-		//}
-
-
-
-
-
-
-
-
-		abfrageTimer = this.setTimeout(() => this.holeDaten(), 35000);
+		catch (e) {
+			this.log.warn('Update Data error: ' + e);
+			abfrageTimer = this.setTimeout(() => this.updateData(), 15000);
+		}
 	}
+
+
 
 	/**
 	 * Is called when adapter shuts down - callback has to be called under any circumstances!
@@ -353,8 +331,8 @@ class OekofenPellematic extends utils.Adapter {
 			// ...
 
 			// clearInterval(interval1);
-			//	this.clearTimeout(abfrageTimer);
-			clearInterval(updateInterval);
+			this.clearTimeout(abfrageTimer);
+
 			callback();
 		} catch (e) {
 			callback();
