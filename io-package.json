@@ -52,7 +52,7 @@
         "license": "MIT",
         "platform": "Javascript/Node.js",
         "main": "main.js",
-        "icon": "oekofen-pellematic.png",
+        "icon": "oekoFEN_Logo.jpg",
         "enabled": true,
         "extIcon": "https://raw.githubusercontent.com/frankpetersohn/ioBroker.oekofen-pellematic/main/admin/oekofen-pellematic.png",
         "readme": "https://github.com/frankpetersohn/ioBroker.oekofen-pellematic/blob/main/README.md",
