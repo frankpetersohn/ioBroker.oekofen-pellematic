@@ -10,15 +10,13 @@ const utils = require('@iobroker/adapter-core');
 const { default: axios } = require('axios');
 const { stat } = require('fs/promises');
 const { maxHeaderSize } = require('http');
-const schedule = require('node-schedule');
+//const schedule = require('node-schedule');
 const { isNull } = require('util');
 
 let abfrageTimer = null;
-let statelist = [];
-let updateInterval = null;
+const statelist = [];
+//let updateInterval = null;
 
-// Load your modules here, e.g.:
-// const fs = require("fs");
 
 class OekofenPellematic extends utils.Adapter {
 
@@ -43,22 +41,12 @@ class OekofenPellematic extends utils.Adapter {
 	 */
 	async onReady() {
 
-		// Initialize your adapter here
-
-
-		// Reset the connection indicator during startup
-		//this.setState('info.connection', false, true);
-
-		// The adapters config (in the instance object everything under the attribute "native") is accessible via
-		// this.config:
 		this.log.info('Pellematic-IP is ' + this.config['IP-Adress']);
 		this.log.info('Pellematic-Port is ' + this.config['Port']);
 		this.log.info('Pellematic-JSON is ' + this.config['JSON-Password']);
-		/* ### */
-
 
 		await this.updateAdaperStructur();
-		abfrageTimer = setTimeout(() => { this.updateData(); }, 10000);
+		abfrageTimer = setTimeout(() => { this.updateData(); }, 20000);
 
 		// In order to get state updates, you need to subscribe to them. The following line adds a subscription for our variable we have created above.
 		//this.subscribeStates('testVariable');
@@ -141,7 +129,7 @@ class OekofenPellematic extends utils.Adapter {
 				}
 
 				if (typeof pData[i][statenames[x]]['unit'] !== 'undefined') {
-					//	commonunit = pData[i][statenames[x]]['unit'];
+
 					if (pData[i][statenames[x]]['unit'].indexOf('C') >= 0) {
 
 						staterole = 'value.temperature';
@@ -228,10 +216,14 @@ class OekofenPellematic extends utils.Adapter {
 					}
 
 				}
-
-
-
-				this.setObjectNotExists(statename, testObj);
+				this.setObjectNotExists(statename, testObj, (err, obj) => {
+					if (err) {
+						this.log.warn('Fehler beim Erstellen des Objekts: '+ err);
+					} else {
+						this.log.info('Objekt erfolgreich erstellt: '+obj);
+					}
+				});
+				//await this.setObjectNotExists(statename, testObj);
 				/*
 								if (statetyp == 'number') {
 									this.setObjectNotExists(statename, {
@@ -263,8 +255,6 @@ class OekofenPellematic extends utils.Adapter {
 										native: {}
 									});
 								}
-				
-								
 				*/
 
 
@@ -335,15 +325,10 @@ class OekofenPellematic extends utils.Adapter {
 				}
 
 
-				//	console.log(JSON.stringify(jsonData));
 				if (adapterStates.length < 1) {
 					this.log.warn('StateList empty: Please restart service');
 				}
 
-				//for (let i = 0; i < statelist.length; i++) {
-
-				//const path = statelist[i].split('.');
-				//	this.log.info(JSON.stringify(jsonData[path[0]][path[1]]));
 
 				for (let i = 0; i < jsonStates.length; i++) {
 					const path = jsonStates[i].split('.');
@@ -356,16 +341,32 @@ class OekofenPellematic extends utils.Adapter {
 							currentStateValue = state.val;
 
 					});
-
-
+					let stateType;
+					this.getObject(this.name+'.'+this.instance+'.'+jsonStates[i], (err, stateObj) => {
+						if (err) {
+							this.log.error('Fehler beim Abrufen des State-Objekts: '+ err);
+						} else {
+							if (stateObj && stateObj.common && stateObj.common.type) {
+								stateType = stateObj.common.type;
+							} else {
+								console.log('Das State-Objekt oder der Typ wurden nicht gefunden.');
+							}
+						}
+					});
+					let wert = jsonData[path[0]][path[1]]['val'];
 					if (typeof (jsonData[path[0]][path[1]]['val']) != 'undefined') {
 						if (path[0] == 'forecast') {
-							await this.setStateAsync(jsonStates[i], { val: jsonData[path[0]][path[1]]['val'], ack: true });
+							if(stateType=='number')wert=parseFloat(wert);
+							await this.setStateAsync(jsonStates[i], { val: wert, ack: true });
 						}
 
 						if (typeof (jsonData[path[0]][path[1]]['factor']) != 'undefined') {
-							await this.setStateAsync(jsonStates[i], { val: jsonData[path[0]][path[1]]['val'] * jsonData[path[0]][path[1]]['factor'], ack: true });
+							const wert = parseFloat(jsonData[path[0]][path[1]]['val']);
+							const faktor = parseFloat(jsonData[path[0]][path[1]]['factor']);
+					
+							await this.setStateAsync(jsonStates[i], {val: wert*faktor, ack: true });
 						}
+
 						if (typeof (jsonData[path[0]][path[1]]['format']) != 'undefined') {
 							const format = JSON.stringify(jsonData[path[0]][path[1]]['format']).split('|');
 							const formatarray = [];
@@ -384,7 +385,6 @@ class OekofenPellematic extends utils.Adapter {
 
 
 					} else {
-						//	await this.setStateAsync(statelist[i], { val: JSON.stringify(jsonData[path[0]][path[1]]), ack: true });
 
 						if (statelist[i].indexOf('name') >= 0 || jsonStates[i].indexOf('text') >= 0 || jsonStates[i].indexOf('info') >= 0) {
 							await this.setStateAsync(jsonStates[i], { val: JSON.stringify(jsonData[path[0]][path[1]]).replace('"', ''), ack: true });
@@ -464,29 +464,18 @@ class OekofenPellematic extends utils.Adapter {
 	}
 
 	async sendState(id, state) {
-		//	this.log.info(`state ${id} changed: ${state.val} (ack = ${state.ack})`);
-		
-		
-		/*
-		console.log(JSON.stringify(id));
-		this.getObject(id, function (err, obj) {
-			if (typeof obj.common.custom != 'undefined') {
-				if (typeof obj.common.custom.factor != 'undefined') {
-					console.log(JSON.stringify(obj.common.custom.factor));
-					state.val = state.val / obj.common.custom.factor;
 
-
+		this.getObject(id, (err, obj) => {
+			if(typeof obj === 'object'){
+				if (typeof obj.common.custom != 'undefined') {
+					if (typeof obj.common.custom.factor != 'undefined') {
+						state.val = state.val / obj.common.custom.factor;
+					}
 				}
 			}
 		});
-		
-		
-		
-		
-		if(typeof this.getStateAsync(id,'common.custom.factor') != 'undefined'){
-			state.val=state.val / this.getStateAsync(id,'common.custom.factor');
-		}
-		*/
+
+
 		if (!state.ack) {
 			this.apiClient = axios.create({
 				baseURL: 'http://' + this.config['IP-Adress'] + ':' + this.config['Port'] + '/' + this.config['JSON-Password'],
@@ -501,9 +490,6 @@ class OekofenPellematic extends utils.Adapter {
 				this.log.debug(resturi);
 				const peResponse = await this.apiClient.get(resturi);
 				this.log.debug('connState:' + this.apiClient.getUri());
-				//	this.log.debug('pedata:' + JSON.stringify(peResponse.data));
-
-
 
 				if (peResponse.status === 200) {
 					this.log.info('Send Data from Pellematic');

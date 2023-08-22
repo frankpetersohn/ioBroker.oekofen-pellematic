@@ -19,7 +19,8 @@
                     "md": 6,
                     "lg": 6,
                     "label": "Port",
-                    "help": "IP or hostname of your Pellematic"
+                    "help": "IP or hostname of your Pellematic",
+                    "default": 4321
                 },
                 "JSON-Password": {
                     "type": "text",
@@ -28,6 +29,15 @@
                     "lg": 6,
                     "label": "JSON-Password",
                     "help": "IP or hostname of your Pellematic"
+                },
+                "delay": {
+                    "type": "number",
+                    "sm": 12,
+                    "md": 6,
+                    "lg": 6,
+                    "label": "Abfrageinterval in Sekunden",
+                    "help": "Delay",
+                    "default": 30
                 }
             }
         }
