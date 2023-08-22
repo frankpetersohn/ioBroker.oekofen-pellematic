@@ -1,4 +1,4 @@
-![Logo](admin/oekofen-pellematic.png)
+![Logo](admin/oekoFEN_Logo.jpg)
 # ioBroker.oekofen-pellematic
 
 [![NPM version](https://img.shields.io/npm/v/iobroker.oekofen-pellematic.svg)](https://www.npmjs.com/package/iobroker.oekofen-pellematic)
